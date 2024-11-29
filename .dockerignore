@@ -1,0 +1,2 @@
+# Don´t add locally generated certificates
+*.pem
