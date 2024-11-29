@@ -8,40 +8,38 @@
 
 # TEE Mock Server
 
-A mock server in Go that generates signed JWT tokens for simulating Google Cloud Confidential Space authentication
+A mock server in Go that generates signed JWT tokens for simulating Google Cloud Confidential Space authentication.
 
 </div>
 
-<div align="center"><h4><a href="#-table-of-contents">️Table of Contents</a> • <a href="#about-the-project">About the Project</a> • <a href="#features">Features</a> • <a href="#-setup">️Setup</a> • <a href="#about-the-author">About the Author</a> • <a href="#license">License</a></h4></div>
-
-## ️Table of Contents
- <details>
-<summary>Open Contents</summary>
-
-- [TEE Mock Server](#tee-mock-server)
-    - [About the Project](#about-the-project)
-    - [Features](#features)
-    - [️Setup](#setup)
-        - [Installation](#installation)
-    - [License](#license)
-</details>
+<div align="center"><h4><a href="#about-the-project">About the Project</a> • <a href="#features">Features</a> • <a href="#-setup">️Setup</a> • <a href="#license">License</a></h4></div>
 
 ## About the Project
 
 The tee-mock-server is a Golang-based project designed to simulate a server that generates JWT tokens, 
 specifically tailored for Google Cloud's Confidential Space. 
-It listens on a Unix domain socket and responds with a newly signed JWT that includes custom claims, 
-such as eat_profile, secboot, and others related to confidential computing. 
+It listens on a Unix domain socket and responds with a newly signed JWT that includes custom claims related 
+to [Confidential Space](https://cloud.google.com/confidential-computing/confidential-space/docs/reference/token-claims). 
+
 The server uses an RSA private key to sign the token and handles graceful shutdown with automatic cleanup of 
-the socket file on termination. This mock server is useful for testing and simulating token-based authentication 
-workflows in confidential computing environments.
+the socket file on termination. 
+
+This mock server is useful for testing and simulating token-based authentication workflows in Confidential Space environments.
 
 ## Features
 
-1. **JWT Token Generation**: The server generates signed JWT tokens using RSA private keys, including custom claims related to Google Cloud Confidential Space, for testing and simulating authentication in confidential computing environments.
+1. **JWT Token Generation**: The server generates signed JWT tokens using a predefined RSA private key, including custom claims related to Google Cloud Confidential Space.
 2. **Unix Domain Socket**: It listens for incoming requests on a Unix domain socket, providing a simple and efficient way to interact with the server, with automatic cleanup of the socket file upon termination.
 
 ## ️Setup
+
+### Prerequisites
+Before starting the mock server, you must make sure that the `/run/container_launcher` folder exists and you have the 
+right to write in it: 
+```shell
+sudo mkdir /run/container_launcher
+sudo chmod -R 777 /run/container_launcher 
+```
 
 ### Installation
 To install this project, follow these steps:
