@@ -1,6 +1,6 @@
 FROM golang:1.23.3 AS build
 
-WORKDIR /app
+WORKDIR /build
 
 # Include project files
 COPY . .
@@ -9,21 +9,18 @@ COPY . .
 RUN go mod download
 
 # Generate the certificate chain
-RUN ./pki/create-chain.sh
+RUN cd ./pki && ./create-chain.sh
 
 # Build the Go application (binary)
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/tee-server-mock
+RUN CGO_ENABLED=0 GOOS=linux go build -o tee-mock-server
 
 FROM alpine:latest
 
-# Install any necessary runtime dependencies (if needed)
-# RUN apk --no-cache add <runtime-dependency>
-
 # Set the working directory
-WORKDIR /
+WORKDIR /app
 
 # Copy the built binary from the previous build stage
-COPY --from=build /app/tee-server-mock .
+COPY --from=build /build/tee-mock-server .
 
 # Set the entrypoint to run the binary
-CMD ["/tee-server-mock"]
+CMD ["/app/tee-mock-server"]
