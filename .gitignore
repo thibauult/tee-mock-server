@@ -4,3 +4,6 @@
 
 # Generated files
 *.pem
+
+# Build
+tee-mock-server

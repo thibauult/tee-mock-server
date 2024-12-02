@@ -8,11 +8,12 @@
 
 # TEE Mock Server
 
-A mock server in Go that generates signed JWT tokens for simulating Google Cloud Confidential Space authentication.
+A mock server written in Go that generates signed JWT tokens for simulating Google Cloud Confidential Space authentication.
 
+<h4>
+    <a href="#about-the-project">About the Project</a> • <a href="#features">Features</a> • <a href="#-setup">️Setup</a> • <a href="#license">License</a>
+</h4>
 </div>
-
-<div align="center"><h4><a href="#about-the-project">About the Project</a> • <a href="#features">Features</a> • <a href="#-setup">️Setup</a> • <a href="#license">License</a></h4></div>
 
 ## About the Project
 
@@ -42,10 +43,10 @@ sudo chmod -R 777 /run/container_launcher
 ```
 
 ### Installation
-To install this project, follow these steps:
+To install this project using Docker, follow these steps:
 ```shell
-docker build --tag tee-server-mock .
-docker run --name "tee-mock-server" --rm -it -v /run/container_launcher:/run/container_launcher tee-server-mock
+make docker-build
+make docker-run
 ```
 
 ### Usage
