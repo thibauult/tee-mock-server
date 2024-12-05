@@ -1,0 +1,9 @@
+services:
+  tee-mock-server:
+    build: .
+    container_name: tee-mock-server
+    environment:
+      - TEE_GOOGLE_SERVICE_ACCOUNT='km@gcp.com'
+      - TEE_TOKEN_EXPIRATION_IN_MINUTES=2
+    volumes:
+      - /run/container_launcher:/run/container_launcher
