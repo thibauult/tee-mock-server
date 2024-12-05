@@ -52,7 +52,7 @@ make docker-run
 ### Usage
 You can easily generate a new token using the following cURL command: 
 ```shell
-sudo curl -s -N --unix-socket /run/container_launcher/teeserver.sock http://localhost/v1/token
+sudo curl -s -N --unix-socket /run/container_launcher/teeserver.sock --data '{ "audience": "foobar", "token_type": "PKI"  }' http://localhost/v1/token
 ```
 
 ## License
