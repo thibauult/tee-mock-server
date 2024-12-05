@@ -16,6 +16,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o tee-mock-server
 
 FROM alpine:latest
 
+# Env variables
+ENV TEE_GOOGLE_SERVICE_ACCOUNT=tee-mock-server@localhost.gserviceaccount.com
+ENV TEE_TOKEN_EXPIRATION_IN_MINUTES=5
+
 # Set the working directory
 WORKDIR /app
 

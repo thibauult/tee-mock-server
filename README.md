@@ -17,7 +17,7 @@ A mock server written in Go that generates signed JWT tokens for simulating Goog
 
 ## About the Project
 
-The tee-mock-server is a Golang-based project designed to simulate a server that generates JWT tokens, 
+The `tee-mock-server` is a Golang-based project designed to simulate a server that generates JWT tokens, 
 specifically tailored for Google Cloud's Confidential Space. 
 It listens on a Unix domain socket and responds with a newly signed JWT that includes custom claims related 
 to [Confidential Space](https://cloud.google.com/confidential-computing/confidential-space/docs/reference/token-claims). 
@@ -43,10 +43,9 @@ sudo chmod -R 777 /run/container_launcher
 ```
 
 ### Installation
-To install this project using Docker, follow these steps:
+To install this project using Docker, you can simply run the following command:
 ```shell
-make docker-build
-make docker-run
+docker compose up
 ```
 
 ### Usage
@@ -54,6 +53,15 @@ You can easily generate a new token using the following cURL command:
 ```shell
 sudo curl -s -N --unix-socket /run/container_launcher/teeserver.sock --data '{ "audience": "foobar", "token_type": "PKI"  }' http://localhost/v1/token
 ```
+
+## Configuration
+The TEE Mock Server allows some level of configuration so that the token it generates can vary depending on your needs. 
+Here's a list of the different environment variables that can be set when starting the server: 
+
+| Name                              | Default                                       | Description                                                                               |
+|-----------------------------------|-----------------------------------------------|-------------------------------------------------------------------------------------------|
+| `TEE_GOOGLE_SERVICE_ACCOUNT`      | tee-mock-server@localhost.gserviceaccount.com | The GCP SA that is set in the "google_service_accounts" <br>claims of the generated token |
+| `TEE_TOKEN_EXPIRATION_IN_MINUTES` | 5                                             | The token expiration time in minutes                                                      |
 
 ## License
 [![GitHub License file](https://img.shields.io/github/license/thibauult/tee-mock-server)](https://github.com/thibauult/tee-mock-server/blob/main/LICENSE)

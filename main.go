@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/viper"
 	"github.com/thibauult/tee-mock-server/pki"
 	"log"
 	"net"
@@ -18,15 +19,27 @@ import (
 
 const (
 	socketPath = "/run/container_launcher/teeserver.sock"
+	// default values
+	defaultGoogleServiceAccount     = "tee-mock-server@localhost.gserviceaccount.com"
+	defaultTokenExpirationInMinutes = 5
 )
 
-type AttestationTokenRequest struct {
+type attestationTokenRequest struct {
 	Audience  string   `json:"audience"`
 	TokenType string   `json:"token_type"`
 	Nonces    []string `json:"nonces"`
 }
 
+type tokenConfig struct {
+	signingKey               *rsa.PrivateKey
+	chain                    interface{}
+	googleServiceAccount     string
+	tokenExpirationInMinutes int
+}
+
 func main() {
+
+	config := loadConfig()
 
 	// Create a Unix domain socket and listen for incoming connections.
 	socket, err := net.Listen("unix", socketPath)
@@ -40,18 +53,18 @@ func main() {
 	go removeSocketOnInterrupt(c)
 
 	// Load RSA private key
-	signingKey, err := pki.GetSigningPrivateKey()
+	config.signingKey, err = pki.GetSigningPrivateKey()
 	if err != nil {
 		log.Printf("Failed to load private key: %v\n", err)
 		log.Fatal(err)
 	}
 
-	chain := pki.GetCertificateChain()
+	config.chain = pki.GetCertificateChain()
 
 	log.Printf("Root Certificate:\n\n%s\n", pki.GetRootCertificate())
 
 	m := http.NewServeMux()
-	m.HandleFunc("/v1/token", newPostTokenHandler(signingKey, chain))
+	m.HandleFunc("/v1/token", newPostTokenHandler(config))
 
 	server := http.Server{Handler: m}
 
@@ -61,7 +74,30 @@ func main() {
 	}
 }
 
-func newPostTokenHandler(signingKey *rsa.PrivateKey, chain []string) func(w http.ResponseWriter, r *http.Request) {
+func loadConfig() tokenConfig {
+
+	const googleServiceAccount = "google_service_account"
+	const tokenExpirationInMinutes = "token_expiration_in_minutes"
+
+	viper.SetDefault(googleServiceAccount, defaultGoogleServiceAccount)
+	viper.SetDefault(tokenExpirationInMinutes, defaultTokenExpirationInMinutes)
+
+	viper.SetEnvPrefix("tee")
+	err := viper.BindEnv(tokenExpirationInMinutes, googleServiceAccount)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config := tokenConfig{}
+	config.googleServiceAccount = viper.GetString(googleServiceAccount)
+	config.tokenExpirationInMinutes = viper.GetInt(tokenExpirationInMinutes)
+
+	log.Println(config)
+
+	return config
+}
+
+func newPostTokenHandler(config tokenConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != "POST" {
@@ -70,47 +106,47 @@ func newPostTokenHandler(signingKey *rsa.PrivateKey, chain []string) func(w http
 			return
 		}
 
-		attestationTokenRequest, err := parseAndValidateAttestationTokenRequest(r)
+		tokenRequest, err := parseAndValidateAttestationTokenRequest(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = fmt.Fprintf(w, "{ \"message\": \"%s\" }", err.Error())
 			return
 		}
 
-		signedJwt := newToken(signingKey, chain, attestationTokenRequest)
+		signedJwt := newToken(config, tokenRequest)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(signedJwt + "\n"))
 	}
 }
 
-func parseAndValidateAttestationTokenRequest(r *http.Request) (*AttestationTokenRequest, error) {
+func parseAndValidateAttestationTokenRequest(r *http.Request) (*attestationTokenRequest, error) {
 
-	attestationTokenRequest := AttestationTokenRequest{}
-	err := json.NewDecoder(r.Body).Decode(&attestationTokenRequest)
+	tokenRequest := attestationTokenRequest{}
+	err := json.NewDecoder(r.Body).Decode(&tokenRequest)
 	if err != nil {
 		return nil, errors.New("failed to parse attestation token request")
 	}
 
-	if attestationTokenRequest.TokenType != "PKI" {
-		return nil, fmt.Errorf("invalid token type: %s", attestationTokenRequest.TokenType)
+	if tokenRequest.TokenType != "PKI" {
+		return nil, fmt.Errorf("invalid token type: %s", tokenRequest.TokenType)
 	}
 
-	if len(attestationTokenRequest.Audience) == 0 {
+	if len(tokenRequest.Audience) == 0 {
 		return nil, fmt.Errorf("audience not set")
 	}
 
-	return &attestationTokenRequest, nil
+	return &tokenRequest, nil
 }
 
-func newToken(signingKey *rsa.PrivateKey, chain []string, request *AttestationTokenRequest) string {
+func newToken(config tokenConfig, tokenRequest *attestationTokenRequest) string {
 	log.Println("Creating new Token...")
 
 	// Create a new token
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, createClaims(request.Audience, request.Nonces))
-	token.Header["x5c"] = chain
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, createClaims(config, tokenRequest.Audience, tokenRequest.Nonces))
+	token.Header["x5c"] = config.chain
 
 	// Sign the token with the RSA private key
-	signedToken, err := token.SignedString(signingKey)
+	signedToken, err := token.SignedString(config.signingKey)
 	if err != nil {
 		log.Printf("Error signing token: %v\n", err)
 	}
@@ -119,7 +155,7 @@ func newToken(signingKey *rsa.PrivateKey, chain []string, request *AttestationTo
 	return signedToken
 }
 
-func createClaims(audience string, nonces []string) jwt.MapClaims {
+func createClaims(config tokenConfig, audience string, nonces []string) jwt.MapClaims {
 
 	if nonces == nil {
 		nonces = []string{}
@@ -138,7 +174,7 @@ func createClaims(audience string, nonces []string) jwt.MapClaims {
 		"secboot":     true,
 		"oemid":       11129,
 		"google_service_accounts": []string{
-			"tee-mock-server@localhost.gserviceaccount.com",
+			config.googleServiceAccount,
 		},
 		"hwmodel":   "GCP_AMD_SEV",
 		"swname":    "CONFIDENTIAL_SPACE",
